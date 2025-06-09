@@ -19,7 +19,7 @@ Explore detailed word cards, interactive learning games, and a visual word netwo
 
 ## Usage
 
-Visit the GitHub Pages site: [[[len-rtz].github.io/[koelsch-parle]  ](https://len-rtz.github.io/koelsch-parle/cards.html)](https://len-rtz.github.io/koelsch-parle/index.html)
+Visit the GitHub Pages site: [[[len-rtz].github.io/[koelsch-parle]]
 Or clone the repo and open `index.html` locally.
 
 ## Contributing
