@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2016%2016%22%3E%3Ctext%20y%3D%2214%22%20font-size%3D%2216%22%3E%F0%9F%A5%90%3C/text%3E%3C/svg%3E">
+    <title>Jouer, Kaarte, Danser...</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <style>
+        /* Custom minimalist styles with sharp edges */
+        .btn, .card {
+            border-radius: 0 !important;
+        }
+        
+        /* Card flip styles */
+        .flip-card {
+            perspective: 1000px;
+            height: 320px;
+        }
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border: 1px solid #e5e7eb;
+        }
+        .flip-card-back {
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div x-data="learningCardsApp()" x-init="loadWords()" class="container mx-auto px-4 py-8">
+        <!-- Navigation -->
+        <nav class="flex justify-between mb-6 pb-3 border-b border-gray-200">
+            <h1 class="text-2xl font-bold">Jouer, Kaarte, Danser...</h1>
+            <div>
+                <a href="index.html" class="px-4 py-2 bg-gray-200 hover:bg-gray-300">Home</a>
+                <a href="cards.html" class="px-4 py-2 bg-gray-200 hover:bg-gray-300">Entdecke alle Wörter</a>
+                <a href="network.html" class="px-4 py-2 bg-gray-200 hover:bg-gray-300">Wortnetz</a>
+            </div>
+        </nav>
+        
+        <!-- Learning Mode Options -->
+        <div class="mb-8 border-b border-gray-200 pb-4">
+            <h2 class="text-lg font-medium mb-3">Einstellungen / Paramètres</h2>
+            <div class="flex flex-wrap gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Erstes Wort / Première Mot</label>
+                    <select x-model="showFirst" class="border-gray-300 border p-2">
+                        <option value="koelsch">Kölsches Wood</option>
+                        <option value="french">Mot Français</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Domain</label>
+                    <select x-model="filters.domain" @change="applyFilters()" class="border-gray-300 border p-2">
+                        <option value="">Alle / Tout</option>
+                        <template x-for="domain in domains" :key="domain">
+                            <option :value="domain" x-text="domain"></option>
+                        </template>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Wortart / Type de mot</label>
+                    <select x-model="filters.wordtype" @change="applyFilters()" class="border-gray-300 border p-2">
+                        <option value="">Alle / Tout </option>
+                        <template x-for="type in wordTypes" :key="type">
+                            <option :value="type" x-text="type"></option>
+                        </template>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <button 
+                    @click="startLearning()" 
+                    class="px-4 py-2 bg-gray-700 text-white hover:bg-gray-800"
+                    x-show="!learningStarted || currentWordIndex >= filteredWords.length"
+                >
+                    Anfangen / Commencer
+                </button>
+                <button 
+                    @click="resetLearning()" 
+                    class="px-4 py-2 bg-gray-300 hover:bg-gray-400"
+                    x-show="learningStarted && currentWordIndex < filteredWords.length"
+                >
+                    Reset
+                </button>
+                
+                <button 
+                    @click="shuffleCards()" 
+                    class="px-4 py-2 bg-gray-300 hover:bg-gray-400"
+                    x-show="learningStarted && filteredWords.length > 0"
+                >
+                    Mischen / Mélanger
+                </button>
+            </div>
+        </div>
+        
+        <!-- Learning interface -->
+        <div x-show="loading" class="text-center py-10">
+            <p class="text-xl">Lädt Wörter... / Chargement des mots...</p>
+        </div>
+        
+        <div x-show="!loading && learningStarted && currentWordIndex < filteredWords.length && filteredWords.length > 0" class="max-w-2xl mx-auto">
+            <!-- Progress indicator -->
+            <div class="mb-4 flex justify-between">
+                <span x-text="`Karte ${currentWordIndex + 1} von ${filteredWords.length}`" class="text-gray-600"></span>
+                <span x-text="`${Math.round(((currentWordIndex +1) / filteredWords.length) * 100)}%`" class="text-gray-600"></span>
+            </div>
+            
+            <!-- Progress bar -->
+            <div class="w-full bg-gray-200 h-2 mb-6">
+                <div 
+                    class="bg-gray-700 h-2"
+                    :style="`width: ${((currentWordIndex +1) / filteredWords.length) * 100}%`"
+                ></div>
+            </div>
+            
+            <!-- Flip card -->
+            <div 
+                class="flip-card mb-6"
+                :class="{'flipped': isFlipped}"
+                @click="toggleFlip()"
+            >
+                <div class="flip-card-inner">
+                    <!-- Front -->
+                    <div class="flip-card-front bg-white flex flex-col">
+                        <div class="bg-gray-100 p-4 border-b border-gray-200">
+                            <h2 class="text-2xl font-bold" x-text="showFirst === 'koelsch' ? currentWord.koelsch : currentWord.french_origin"></h2>
+                            <p class="text-gray-500 text-sm" x-text="showFirst === 'koelsch' ? 'Kölsch' : 'Français'"></p>
+                        </div>
+                        <div class="p-6 flex-grow flex flex-col justify-center">
+                            <div x-show="showFirst === 'koelsch' && currentWord.example_sentence_koelsch" class="mb-4">
+                                <p class="text-sm text-gray-500">Beispiel:</p>
+                                <p class="italic text-lg" x-text="currentWord.example_sentence_koelsch"></p>
+                            </div>
+                            <div x-show="showFirst === 'french' && currentWord.example_sentence_french" class="mb-4">
+                                <p class="text-sm text-gray-500">Exemple:</p>
+                                <p class="italic text-lg" x-text="currentWord.example_sentence_french"></p>
+                            </div>
+                            <p class="text-center text-gray-400 mt-auto">(Klick zum Umdrehen / Cliquez pour retourner)</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Back -->
+                    <div class="flip-card-back bg-white flex flex-col">
+                        <div class="bg-gray-100 p-4 border-b border-gray-200">
+                            <h2 class="text-2xl font-bold" x-text="showFirst === 'french' ? currentWord.koelsch : currentWord.french_origin"></h2>
+                            <p class="text-gray-500 text-sm" x-text="showFirst === 'french' ? 'Kölsch' : 'Français'"></p>
+                        </div>
+                        <div class="p-6 flex-grow">
+                            <div class="mb-4" x-show="currentWord.wordtype">
+                                <p class="text-sm text-gray-500">Wortart / Type de mot</p>
+                                <p x-text="currentWord.wordtype"></p>
+                            </div>
+                            
+                            <div class="mb-4" x-show="currentWord.explanation">
+                                <p class="text-sm text-gray-500">Erklärung / Explication</p>
+                                <p x-text="currentWord.explanation"></p>
+                            </div>
+                            
+                            <div x-show="showFirst === 'french' && currentWord.example_sentence_koelsch" class="mb-4">
+                                <p class="text-sm text-gray-500">Beispiel / Exemple (Kölsch)</p>
+                                <p class="italic" x-text="currentWord.example_sentence_koelsch"></p>
+                            </div>
+                            
+                            <div x-show="showFirst === 'koelsch' && currentWord.example_sentence_french" class="mb-4">
+                                <p class="text-sm text-gray-500">Beispiel / Exemple (Français)</p>
+                                <p class="italic" x-text="currentWord.example_sentence_french"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation buttons -->
+            <div class="flex justify-between">
+                <button 
+                    @click="prevCard()" 
+                    class="px-4 py-2 bg-gray-200 hover:bg-gray-300"
+                    :disabled="currentWordIndex === 0"
+                    :class="{'opacity-50 cursor-not-allowed': currentWordIndex === 0}"
+                >
+                    Zurück / Précédent
+                </button>
+                <button 
+                    @click="nextCard()" 
+                    class="px-4 py-2 bg-gray-700 text-white hover:bg-gray-800"
+                >
+                    Weiter / Suivant
+                </button>
+            </div>
+        </div>
+        
+        <!-- Random Card button -->
+        <div x-show="!loading && learningStarted && filteredWords.length > 1" class="max-w-2xl mx-auto mt-4">
+            <button 
+                @click="showRandomCard()" 
+                class="px-4 py-2 bg-gray-500 text-white hover:bg-gray-600 w-full"
+            >
+                Zufälliges Wort / Mot aléatoire
+            </button>
+        </div>
+        
+        <!-- Completed message -->
+        <div x-show="!loading && learningStarted && currentWordIndex >= filteredWords.length && filteredWords.length > 0" class="text-center py-10">
+            <h2 class="text-2xl font-bold mb-4">Feddisch / Fini!</h2>
+            <p class="mb-6">Du hast alle Wörter angeschaut / Tu as regardé tous les mots!</p>
+            <button 
+                @click="startLearning()" 
+                class="px-4 py-2 bg-gray-700 text-white hover:bg-gray-800"
+            >
+                Nochmal / Encore
+            </button>
+        </div>
+        
+        <!-- No words message -->
+        <div x-show="!loading && filteredWords.length === 0 && learningStarted" class="text-center py-10">
+            <p class="text-xl">Keine Wörter zu deiner Suche gefunden. / Aucun mot trouvé pour ta recherche.</p>
+        </div>
+    </div>
+
+    <script>
+        function learningCardsApp() {
+            return {
+                words: [],
+                filteredWords: [],
+                loading: true,
+                domains: [],
+                wordTypes: [],
+                showFirst: 'koelsch',
+                learningStarted: false,
+                currentWordIndex: 0,
+                isFlipped: false,
+                filters: {
+                    domain: '',
+                    wordtype: ''
+                },
+                
+                get currentWord() {
+                    return this.filteredWords[this.currentWordIndex] || {};
+                },
+                
+                loadWords() {
+                    // CSV file location
+                    Papa.parse('data/koe-fra.csv?cachebuster=' + new Date().getTime(), {
+                        download: true,
+                        header: true,
+                        complete: (results) => {
+                            console.log("CSV loaded:", results);
+                            // Filter out entries that don't have both Kölsch and French words
+                            this.words = results.data
+                                .filter(word => word.koelsch && word.french_origin)
+                                .map(word => {
+                                    // Clean up empty strings
+                                    Object.keys(word).forEach(key => {
+                                        if (word[key] === '') {
+                                            word[key] = null;
+                                        }
+                                    });
+                                    return word;
+                                });
+                            
+                            this.extractFilterOptions();
+                            this.applyFilters();
+                            this.loading = false;
+                        },
+                        error: (error) => {
+                            console.error("Error loading CSV:", error);
+                            alert("Failed to load word data.");
+                            this.loading = false;
+                        }
+                    });
+                },
+                
+                extractFilterOptions() {
+                    // Get unique domains and word types, sorted alphabetically
+                    this.domains = [...new Set(this.words.map(word => word.domain).filter(Boolean))].sort();
+                    this.wordTypes = [...new Set(this.words.map(word => word.wordtype).filter(Boolean))].sort();
+                },
+                
+                applyFilters() {
+                    this.filteredWords = this.words.filter(word => {
+                        if (this.filters.domain && word.domain !== this.filters.domain) return false;
+                        if (this.filters.wordtype && word.wordtype !== this.filters.wordtype) return false;
+                        return true;
+                    });
+                    
+                    // Reset current word index when filters change
+                    this.currentWordIndex = 0;
+                    this.isFlipped = false;
+                    
+                    // Reset learning started if we end up with no words
+                    if (this.filteredWords.length === 0) {
+                        this.learningStarted = false;
+                    }
+                },
+                
+                shuffleArray(array) {
+                    // Fisher-Yates shuffle algorithm
+                    for (let i = array.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [array[i], array[j]] = [array[j], array[i]];
+                    }
+                    return array;
+                },
+                
+                startLearning() {
+                    if (this.filteredWords.length === 0) {
+                        alert("Keine Wörter gefunden. Bitte andere Filter wählen. / Aucun mot trouvé. Veuillez choisir d'autres filtres.");
+                        return;
+                    }
+                    
+                    // Shuffle the filtered words for random order
+                    this.filteredWords = this.shuffleArray([...this.filteredWords]);
+                    this.learningStarted = true;
+                    this.currentWordIndex = 0;
+                    this.isFlipped = false;
+                },
+                
+                resetLearning() {
+                    this.learningStarted = false;
+                    this.currentWordIndex = 0;
+                    this.isFlipped = false;
+                },
+                
+                shuffleCards() {
+                    // Remember current card to maintain context
+                    const currentCard = this.currentWord;
+                    
+                    // Shuffle the remaining cards
+                    this.filteredWords = this.shuffleArray([...this.filteredWords]);
+                    
+                    // Try to find the current card in the new shuffled array
+                    const newIndex = this.filteredWords.findIndex(w => 
+                        w.koelsch === currentCard.koelsch && w.french_origin === currentCard.french_origin
+                    );
+                    
+                    // If found, move it to the current position
+                    if (newIndex !== -1) {
+                        // Swap the current word with the one at currentWordIndex
+                        [this.filteredWords[newIndex], this.filteredWords[this.currentWordIndex]] = 
+                        [this.filteredWords[this.currentWordIndex], this.filteredWords[newIndex]];
+                    }
+                    
+                    // Reset flip state
+                    this.isFlipped = false;
+                },
+                
+                showRandomCard() {
+                    if (this.filteredWords.length <= 1) return;
+                    
+                    // Get a random index different from current
+                    let randomIndex;
+                    do {
+                        randomIndex = Math.floor(Math.random() * this.filteredWords.length);
+                    } while (randomIndex === this.currentWordIndex);
+                    
+                    this.currentWordIndex = randomIndex;
+                    this.isFlipped = false;
+                },
+                
+                toggleFlip() {
+                    this.isFlipped = !this.isFlipped;
+                },
+                
+                nextCard() {
+                    if (this.currentWordIndex < this.filteredWords.length - 1) {
+                        this.currentWordIndex++;
+                        this.isFlipped = false;
+                    }
+                },
+                
+                prevCard() {
+                    if (this.currentWordIndex > 0) {
+                        this.currentWordIndex--;
+                        this.isFlipped = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

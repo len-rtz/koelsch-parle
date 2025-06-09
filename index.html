@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2016%2016%22%3E%3Ctext%20y%3D%2214%22%20font-size%3D%2216%22%3E%F0%9F%A5%90%3C/text%3E%3C/svg%3E">
+    <title>Projekt zum kölsch-französischen Sprachschatz</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .btn, .card {
+            border-radius: 0 !important;
+        }
+        
+        .feature-card {
+            border: 1px solid #e5e7eb;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-10">
+        <!-- Header -->
+        <header class="text-center mb-16">
+            <h1 class="text-4xl font-bold mb-4">Kölsch parlé</h1>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Diese Seite ist eine Hommage an die sprachliche Liaison zwischen Kölle und Frankreich.
+                Ein digitales Wörterbuch vom höfischen Panache bis zum schimpfenden Fisimatente. Für Sprachnerds, Rheinländer*innen und Neugierige.
+            </p>
+        </header>
+        
+        <!-- Main navigation -->
+        <nav class="flex justify-center mb-16">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
+                <a href="cards.html" class="feature-card bg-white p-6 flex flex-col items-center text-center hover:no-underline">
+                    <div class="text-4xl font-bold mb-4">🔍</div>
+                    <h2 class="text-xl font-bold mb-2">Entdecke alle Wörter</h2>
+                    <p class="text-gray-600">Entdecke alle Wörter, die der Kölschen Sprooch das gewissen savoir vivre geben.</p>
+                </a>
+                
+                <a href="learning.html" class="feature-card bg-white p-6 flex flex-col items-center text-center hover:no-underline">
+                    <div class="text-4xl font-bold mb-4">🎴</div>
+                    <h2 class="text-xl font-bold mb-2">Jouer, kaarte, danser...</h2>
+                    <p class="text-gray-600">Carte à jouer – spiel dich durch Sprachpaare!</p>
+                </a>
+                
+                <a href="network.html" class="feature-card bg-white p-6 flex flex-col items-center text-center hover:no-underline">
+                    <div class="text-4xl font-bold mb-4">🕸️</div>
+                    <h2 class="text-xl font-bold mb-2">Visuelles Wortnetz</h2>
+                    <p class="text-gray-600">Kölsch-Französischer Klüngel à la carte. <br> (in Arbeit)</p>
+                </a>
+            </div>
+        </nav>
+        
+        <!-- Project information -->
+        <section class="max-w-4xl mx-auto mb-16">
+            <h2 class="text-2xl font-bold mb-4">C'est Kölsch, wie der Franzose sagt</h2>
+            <div class="bg-white p-6 border border-gray-200">
+                <p class="mb-4">
+                    Dieses Projekt taucht in das sprachliche Erbe des französischen Einflusses auf den Kölschen Dialekt ein.
+                    Basierend auf dem <strong>"Neuen Kölnischen Wortschatz" von Adam Wrede</strong> wurden eine bisher noch unbestimmte Anzahl Wörter mit französischem Ursprung
+                    in dieser digitalen Sammlung zusammengetragen. Das Projekt ist inspiriert von der Idee, dass Sprache nicht nur ein Kommunikationsmittel ist, sondern auch ein kulturelles Erbe,
+                    das es zu bewahren gilt. 
+                </p>
+                <p class="mb-4">
+                    Vorallem während der französischen Besetzung Kölns (1794–1814) hatte die französische Sprache einen bedeutenden Einfluss 
+                    auf den lokalen Wortschatz und hinterließ Spuren, die bis heute nachhallen. 
+                    Dieses Projekt dokumentiert, welche Wörter auch heute noch aktiv verwendet werden und welche verschwunden sind.
+                </p>
+                <p class="mb-4">
+                    Entdecke die Sammlung aus verschiedenen Blickwinkeln: Stöbere durch detaillierte Wortkarten, teste dein Wissen 
+                    mit interaktiven Lernkarten oder visualisiere Verbindungen zwischen den Wörter durch das Wortnetzwerk (in Arbeit).
+                </p>
+                <p class="mb-4">
+                    Diese Seite wird fortlaufend erweitert und aktualisiert. Wenn du ein Wort kennst, das hier fehlt, oder eine interessante Verbindung zwischen Kölsch und Französisch entdeckt hast, 
+                    lade ich dich herzlich ein, mitzumachen! Du kannst mir hier schreiben: <a href="mailto:koe-fra@proton.me" class="text-blue-600 hover:underline">koe-fra@proton.me</a>
+                </p>
+        </section>
+        
+        <!-- Sample words showcase -->
+        <section class="max-w-4xl mx-auto mb-16">
+            <h2 class="text-2xl font-bold mb-4">Saach ens</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white p-4 border border-gray-200">
+                    <h3 class="font-bold mb-1">Pläsier</h3>
+                    <p class="text-sm text-gray-500">Französisch: plaisir</p>
+                    <p class="mt-2 text-sm">Freude</p>
+                </div>
+                
+                <div class="bg-white p-4 border border-gray-200">
+                    <h3 class="font-bold mb-1">Lamäng</h3>
+                    <p class="text-sm text-gray-500">französisch: la main</p>
+                    <p class="mt-2 text-sm">Hand</p>
+                </div>
+                
+                <div class="bg-white p-4 border border-gray-200">
+                    <h3 class="font-bold mb-1">Plümmo</h3>
+                    <p class="text-sm text-gray-500">Französisch: plumeau</p>
+                    <p class="mt-2 text-sm">Federbettdecke</p>
+                </div>
+            </div>
+            <div class="text-center mt-6">
+                <a href="cards.html" class="inline-block px-6 py-3 bg-gray-700 text-white hover:bg-gray-800">
+                    Entdecke alle Worte / Explore tout les mots
+                </a>
+            </div>
+        </section>
+        
+    </div>
+</body>
+</html>

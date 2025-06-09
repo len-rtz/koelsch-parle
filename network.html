@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2016%2016%22%3E%3Ctext%20y%3D%2214%22%20font-size%3D%2216%22%3E%F0%9F%A5%90%3C/text%3E%3C/svg%3E">
+    <title>Kölsch-Französische Liaison</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+    <style>
+        /* Custom minimalist styles with sharp edges */
+        .btn, .card {
+            border-radius: 0 !important;
+        }
+        
+        /* Network visualization styles */
+        .node {
+            stroke: #fff;
+            stroke-width: 1.5px;
+        }
+        
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+        }
+        
+        .node text {
+            font-size: 10px;
+            fill: #333;
+        }
+        
+        /* Word detail card */
+        .word-detail {
+            border: 1px solid #e5e7eb;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div x-data="networkApp()" x-init="loadWords()" class="container mx-auto px-4 py-8">
+        <!-- Navigation -->
+        <nav class="flex justify-between mb-6 pb-3 border-b border-gray-200">
+            <h1 class="text-2xl font-bold">Kölsch-Französische Liaison</h1>
+            <div>
+                <a href="index.html" class="px-4 py-2 bg-gray-200 hover:bg-gray-300">Home</a>
+                <a href="cards.html" class="px-4 py-2 bg-gray-200 hover:bg-gray-300">Entdecke alle Wörter</a>
+                <a href="learning.html" class="px-4 py-2 bg-gray-200 hover:bg-gray-300">Wortspiel</a>
+            </div>
+        </nav>
+        
+        <!-- Network Options -->
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Gruppieren nach</label>
+                <select x-model="groupBy" @change="updateNetwork()" class="border-gray-300 border p-2 w-full">
+                    <option value="domain">Domain</option>
+                    <option value="wordtype">Wortart</option>
+                    <option value="usage_status">Benutzung</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Highlight</label>
+                <select x-model="highlight" @change="updateHighlight()" class="border-gray-300 border p-2 w-full">
+                    <option value="domain">Domain</option>
+                    <option value="usage_status">Benutzung</option>
+                    <option value="wordtype">Wortart</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button @click="resetZoom()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300">Reset</button>
+            </div>
+        </div>
+        
+        <!-- Loading message -->
+        <div x-show="loading" class="text-center py-10">
+            <p class="text-xl">Wortnetz wird geladen...</p>
+        </div>
+        
+        <!-- Network Visualization and Details Container -->
+        <div x-show="!loading" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Network Visualization (takes 2/3 of space) -->
+            <div class="md:col-span-2 bg-white border border-gray-200">
+                <div id="network-container" class="w-full h-[600px]"></div>
+            </div>
+            
+            <!-- Word Details (takes 1/3 of space) -->
+            <div class="word-detail bg-white p-4">
+                <div x-show="!selectedWord" class="flex items-center justify-center h-full">
+                    <p class="text-gray-500">Klick auf einen Knoten um Informationen zum Wort zu entdecken.</p>
+                </div>
+                
+                <div x-show="selectedWord" class="h-full">
+                    <div class="mb-4 pb-2 border-b border-gray-200">
+                        <h2 class="text-2xl font-bold" x-text="selectedWord?.koelsch"></h2>
+                        <p class="text-lg text-gray-700" x-text="selectedWord?.french_origin"></p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-2"><div>
+                            <p class="text-sm text-gray-500">Wortart:</p>
+                            <p x-text="selectedWord?.wordtype"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Domain:</p>
+                            <p x-text="selectedWord?.domain"></p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <p class="text-sm text-gray-500">Benutzung:</p>
+                        <p 
+                            x-text="selectedWord?.usage_status"
+                            :class="{
+                                'text-green-600': selectedWord?.usage_status === 'active',
+                                'text-yellow-600': selectedWord?.usage_status === 'fading',
+                                'text-red-600': selectedWord?.usage_status === 'obsolete'
+                            }"
+                        ></p>
+                    </div>
+                    
+                    <div x-show="selectedWord?.explanation">
+                        <p class="text-sm text-gray-500">Erklärung:</p>
+                        <p x-text="selectedWord?.explanation"></p>
+                    </div>
+                    
+                    <div x-show="selectedWord?.example_sentence_kölsch">
+                        <p class="text-sm text-gray-500">Beispiel (Kölsch):</p>
+                        <p class="italic" x-text="selectedWord?.example_sentence_kölsch"></p>
+                    </div>
+                    
+                    <div x-show="selectedWord?.example_sentence_french">
+                        <p class="text-sm text-gray-500">Beispiel (Francais):</p>
+                        <p class="italic" x-text="selectedWord?.example_sentence_french"></p>
+                    </div>
+                    
+                    <div class="mt-4 pt-2 border-t border-gray-200">
+                        <a 
+                            :href="`cards.html?word=${selectedWord?.koelsch}`" 
+                            class="text-gray-700 hover:underline"
+                        >
+                            In der Kartenübersicht anzeigen
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Legend -->
+    <div class="mt-6 bg-white border border-gray-200 p-4">
+        <h3 class="font-medium mb-2">Legend</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="legend-container">
+            <!-- Legend items will be dynamically generated -->
+        </div>
+    </div>
+</div>
+
+<script>
+    function networkApp() {
+        return {
+            words: [],
+            loading: true,
+            selectedWord: null,
+            groupBy: 'domain',
+            highlight: '',
+            simulation: null,
+            svg: null,
+            width: 0,
+            height: 0,
+            zoom: null,
+            
+            loadWords() {
+                Papa.parse('data/koe-fra.csv?'+ new Date().getTime(), {
+                    download: true,
+                    header: true,
+                    complete: (results) => {
+                        this.words = results.data.filter(word => word.koelsch && word.french_origin);
+                        this.loading = false;
+                        this.$nextTick(() => {
+                            this.initializeNetwork();
+                        });
+                    }
+                });
+            },
+            
+            initializeNetwork() {
+                const container = document.getElementById('network-container');
+                this.width = container.clientWidth;
+                this.height = container.clientHeight;
+                
+                // Create SVG
+                this.svg = d3.select("#network-container")
+                    .append("svg")
+                    .attr("width", this.width)
+                    .attr("height", this.height);
+                
+                // Add zoom behavior
+                this.zoom = d3.zoom()
+                    .scaleExtent([0.1, 8])
+                    .on("zoom", (event) => {
+                        this.svg.select("g").attr("transform", event.transform);
+                    });
+                
+                this.svg.call(this.zoom);
+                
+                // Create main group for all elements
+                const g = this.svg.append("g");
+                
+                this.updateNetwork();
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    const container = document.getElementById('network-container');
+                    this.width = container.clientWidth;
+                    this.height = container.clientHeight;
+                    
+                    this.svg
+                        .attr("width", this.width)
+                        .attr("height", this.height);
+                        
+                    this.updateNetwork();
+                });
+            },
+            
+            updateNetwork() {
+                const g = this.svg.select("g");
+                g.selectAll("*").remove();
+                
+                // Process data for network
+                const groups = {};
+                this.words.forEach(word => {
+                    const groupKey = word[this.groupBy] || 'Unknown';
+                    if (!groups[groupKey]) {
+                        groups[groupKey] = [];
+                    }
+                    groups[groupKey].push(word);
+                });
+                
+                // Create nodes and links
+                const nodes = [];
+                const links = [];
+                
+                // Add group center nodes
+                Object.keys(groups).forEach((groupKey, i) => {
+                    nodes.push({
+                        id: `group-${groupKey}`,
+                        name: groupKey,
+                        isGroup: true,
+                        group: i,
+                        count: groups[groupKey].length
+                    });
+                });
+                
+                // Add word nodes and links to group centers
+                this.words.forEach(word => {
+                    const groupKey = word[this.groupBy] || 'Unknown';
+                    nodes.push({
+                        id: word.koelsch,
+                        name: word.koelsch,
+                        french: word.french_origin,
+                        wordData: word,
+                        group: Object.keys(groups).indexOf(groupKey),
+                        isGroup: false
+                    });
+                    
+                    links.push({
+                        source: word.koelsch,
+                        target: `group-${groupKey}`,
+                        value: 1
+                    });
+                });
+                
+                // Define color scale based on groups
+                const color = d3.scaleOrdinal(d3.schemeCategory10);
+                
+                // Create simulation
+                this.simulation = d3.forceSimulation(nodes)
+                    .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.source.isGroup || d.target.isGroup ? 70 : 30))
+                    .force("charge", d3.forceManyBody().strength(d => d.isGroup ? -500 : -100))
+                    .force("center", d3.forceCenter(this.width / 2, this.height / 2))
+                    .force("collision", d3.forceCollide().radius(d => d.isGroup ? 50 : 20));
+                
+                // Add links
+                const link = g.append("g")
+                    .attr("class", "links")
+                    .selectAll("line")
+                    .data(links)
+                    .enter().append("line")
+                    .attr("class", "link")
+                    .attr("stroke-width", 1);
+                
+                // Add nodes
+                const node = g.append("g")
+                    .attr("class", "nodes")
+                    .selectAll("g")
+                    .data(nodes)
+                    .enter().append("g")
+                    .attr("class", "node")
+                    .on("click", (event, d) => {
+                        this.selectedWord = d.wordData;
+                        event.stopPropagation();
+                    })
+                    .call(d3.drag()
+                        .on("start", this.dragstarted.bind(this))
+                        .on("drag", this.dragged.bind(this))
+                        .on("end", this.dragended.bind(this)));
+                
+                // Add circles to nodes
+                node.append("circle")
+                    .attr("r", d => d.isGroup ? 10 + Math.min(d.count, 30) : 5)
+                    .attr("fill", d => color(d.group))
+                    .attr("opacity", d => d.isGroup ? 0.7 : 1);
+                
+                // Add labels to group nodes
+                node.append("text")
+                    .attr("dx", d => d.isGroup ? 0 : 8)
+                    .attr("dy", d => d.isGroup ? 0 : 3)
+                    .attr("text-anchor", d => d.isGroup ? "middle" : "start")
+                    .text(d => d.isGroup ? d.name : d.name)
+                    .attr("display", d => d.isGroup ? null : "none")
+                    .attr("font-weight", d => d.isGroup ? "bold" : "normal")
+                    .attr("font-size", d => d.isGroup ? "12px" : "10px");
+                
+                // Add hover effect for word nodes
+                node.filter(d => !d.isGroup)
+                    .on("mouseover", function(event, d) {
+                        d3.select(this).select("text")
+                            .attr("display", null);
+                        
+                        d3.select(this).select("circle")
+                            .attr("r", 8);
+                    })
+                    .on("mouseout", function(event, d) {
+                        d3.select(this).select("text")
+                            .attr("display", "none");
+                            
+                        d3.select(this).select("circle")
+                            .attr("r", 5);
+                    });
+                
+                // Update positions on simulation tick
+                this.simulation.on("tick", () => {
+                    link
+                        .attr("x1", d => d.source.x)
+                        .attr("y1", d => d.source.y)
+                        .attr("x2", d => d.target.x)
+                        .attr("y2", d => d.target.y);
+                    
+                    node.attr("transform", d => `translate(${d.x},${d.y})`);
+                });
+                
+                // Create legend
+                this.updateLegend(Object.keys(groups), color);
+                
+                // Clicking on background deselects the word
+                this.svg.on("click", () => {
+                    this.selectedWord = null;
+                });
+                
+                // Apply current highlight if any
+                if (this.highlight) {
+                    this.updateHighlight();
+                }
+            },
+            
+            updateLegend(groups, colorScale) {
+                const legendContainer = d3.select("#legend-container");
+                legendContainer.selectAll("*").remove();
+                
+                groups.forEach((group, i) => {
+                    const item = legendContainer.append("div")
+                        .attr("class", "flex items-center");
+                        
+                    item.append("div")
+                        .attr("class", "w-4 h-4 mr-2")
+                        .style("background-color", colorScale(i));
+                        
+                    item.append("span")
+                        .text(group);
+                });
+            },
+            
+            updateHighlight() {
+                if (!this.highlight) {
+                    // Reset all node colors to group colors
+                    const color = d3.scaleOrdinal(d3.schemeCategory10);
+                    this.svg.selectAll(".node circle")
+                        .attr("fill", d => color(d.group));
+                    return;
+                }
+                
+                // Define highlight colors based on the selected attribute
+                let colorScale;
+                let categories;
+                
+                if (this.highlight === 'usage_status') {
+                    categories = ['active', 'fading', 'obsolete'];
+                    colorScale = d3.scaleOrdinal()
+                        .domain(categories)
+                        .range(['#10B981', '#F59E0B', '#EF4444']);
+                } else if (this.highlight === 'wordtype') {
+                    categories = [...new Set(this.words.map(w => w.wordtype).filter(Boolean))];
+                    colorScale = d3.scaleOrdinal(d3.schemeCategory10).domain(categories);
+                }
+                
+                // Update node colors
+                this.svg.selectAll(".node")
+                    .filter(d => !d.isGroup)
+                    .select("circle")
+                    .attr("fill", d => {
+                        if (!d.wordData || !d.wordData[this.highlight]) return "#ccc";
+                        return colorScale(d.wordData[this.highlight]);
+                    });
+                    
+                // Update legend
+                if (categories) {
+                    this.updateLegend(categories, colorScale);
+                }
+            },
+            
+            dragstarted(event, d) {
+                if (!event.active) this.simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            },
+            
+            dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            },
+            
+            dragended(event, d) {
+                if (!event.active) this.simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            },
+            
+            resetZoom() {
+                this.svg.transition()
+                    .duration(750)
+                    .call(this.zoom.transform, d3.zoomIdentity);
+            }
+        }
+    }
+</script>
+</body>
+</html>
